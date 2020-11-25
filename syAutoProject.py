@@ -12,6 +12,8 @@ class Application(tk.Frame):
 	outputFoldername = "Output Folder: "
 	inputFoldername = "Input Folder: "
 	screenMessages = []
+	setInput = 1
+	setOutput = 1
 	
 	def __init__(self, master=None):
 		super().__init__(master)
@@ -48,24 +50,32 @@ class Application(tk.Frame):
 		self.outputFoldername = filedialog.askdirectory(initialdir = "/", title = "Select a Folder") 
 		# Change label contents 
 		self.output["text"] = "Output Folder: " + self.outputFoldername
+		self.setOutput = 0
 	
 	def inputBrowseFiles(self): 
 		self.inputFoldername = filedialog.askdirectory(initialdir = "/", title = "Select a Folder") 
 		# Change label contents 
 		self.input["text"] = "Input Folder: " + self.inputFoldername
+		self.setInput = 0
 		
 	def addTextLine(self, text):
 		self.textbox['state'] = 'normal'
-		self.textbox.insert(tk.END, "\n"+text)
+		self.textbox.insert(tk.END, text+"\n")
 		self.textbox['state'] = 'disabled'
 		self.textbox.see("end")
 		self.update()
 
 	def convert(self):
-		inputFoldername = "C:/Users/micha/Pictures/syGlass"
-		outputFoldername = "C:/convert_output"
+		inputFoldername = self.inputFoldername
+		outputFoldername = self.outputFoldername
+		print(self.setInput)
+		print(self.setOutput)
+		if self.setInput or self.setOutput:
+			self.addTextLine("Set Input and Output folders first.")
+			return
 		dirs = []
 		all = os.listdir(inputFoldername)
+		successfulProjects = []
 		for each in all:
 			fullpath = os.path.join(inputFoldername, each)
 			
@@ -78,7 +88,7 @@ class Application(tk.Frame):
 			os.makedirs(outputFoldername)
 			
 		for imagesetFullPath in dirs:
-			basename =os.path.basename(imagesetFullPath)
+			basename = os.path.basename(imagesetFullPath)
 			msg = "Found directory: " + basename
 			self.addTextLine(msg)
 			newPath = os.path.join(outputFoldername, basename)
@@ -109,8 +119,27 @@ class Application(tk.Frame):
 				self.addTextLine(str(e))
 			else:
 				self.addTextLine("Success...!")
+				successfulProjects.append(newPath)
+				
 		#afterward, use pyglass::VolumeLibrary to reload, Call VolumeLibrary::ReloadLibrary(), Call VolumeLibrary::PutEntry()
+		pv = pyglass.VolumeLibrary()
+		pv.ReloadLibrary()
+		
+		for project in successfulProjects:
+			print(project)
+			name = os.path.basename(project)
+			count = 0
+			while pv.HasEntry(name):
+				count = count + 1
+				name = name + "_" + str(count)
+			if count is not 0:
+				self.addTextLine("Library Entry with that name found, renaming: " + name)
+			entry = pv.CreateEntryFromPath(project, name)
+			pv.PutEntry(entry)
 
+		self.addTextLine("------------------------------")
+		self.addTextLine("Successfully created " + str(len(successfulProjects)) + " / " + str(len(dirs)))
+			
 def main():
 	root = tk.Tk()
 	ex = Application(root)
