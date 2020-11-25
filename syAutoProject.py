@@ -8,8 +8,9 @@ from syglass import pyglass
 import code
 
 class Application(tk.Frame):
-	outputFoldername = "Output Folder:"
-	inputFoldername = "C:/mdm"
+	outputFoldername = "Output Folder: "
+	inputFoldername = "Input Folder: "
+	screenMessages = []
 	
 	def __init__(self, master=None):
 		super().__init__(master)
@@ -34,11 +35,10 @@ class Application(tk.Frame):
 		
 		self.textbox = tk.Text(self, height=10, width=70)
 		self.textbox.pack(side="top")
-		self.textbox.insert('1.0', 'Choose your input and output directories and press convert.')
 		self.textbox['state'] = 'disabled'
 		self.textbox['foreground'] = 'white'
 		self.textbox['background'] = 'black'
-		
+		self.addTextLine('Choose your input and output directories and press convert.')
 
 		self.convert = tk.Button(self, text="CONVERT", fg="red", command=self.convert)
 		self.convert.pack(side="bottom")
@@ -51,59 +51,58 @@ class Application(tk.Frame):
 	def inputBrowseFiles(self): 
 		self.inputFoldername = filedialog.askdirectory(initialdir = "/", title = "Select a Folder") 
 		# Change label contents 
-		self.input["text"] = "Input Folder: " + self.inputFoldername
-	
+		self.input["text"] = "Input Folder: " + self.inputFoldername		
+		
+	def addTextLine(self, text):
+		self.screenMessages.append(text)
+		if len(self.screenMessages) > 6:
+			self.screenMessages.pop()
+		self.textbox['state'] = 'normal'
+		self.textbox.insert('1.0',"\n ".join(self.screenMessages))
+		self.textbox['state'] = 'disabled'
+		self.update()
+
 	def convert(self):
-		print(self)
-
-def createDirIfMissing(path):
-	if not os.path.exists(path):
-		os.makedirs(path)
+		inputFoldername = "C:/Users/micha/Pictures/syGlass"
+		outputFoldername = "C:/convert_output"
+		dirs = []
+		all = os.listdir(inputFoldername)
+		for each in all:
+			fullpath = os.path.join(inputFoldername, each)
+			
+			if os.path.isdir(fullpath):
+				l = glob.glob(os.path.join(fullpath, "*.png"))
+				if len(l) > 4:
+					dirs.append(fullpath)
 		
-def addTextLine(text):
-	print(text)
-	#txt = self.textbox.get()
-	# gets everything in your textbox
-	#self.textarea.insert(END,"\n"+text)
-
-def convert():
-	inputFoldername = "C:/Users/micha/Pictures/syGlass"
-	outputFoldername = "C:/convert_output"
-	dirs = []
-	all = os.listdir(inputFoldername)
-	for each in all:
-		fullpath = os.path.join(inputFoldername, each)
+		if not os.path.exists(outputFoldername):
+			os.makedirs(outputFoldername)
+			
+		for imagesetFullPath in dirs:
+			basename =os.path.basename(imagesetFullPath)
+			msg = "Found directory: " + basename
+			self.addTextLine(msg)
+			newPath = os.path.join(outputFoldername, basename)
+			self.addTextLine("Creating...")
+			try:
+				project = pyglass.CreateProject(pyglass.path(outputFoldername), basename)
+				dd = pyglass.DirectoryDescription()
+				firstPNG = glob.glob(os.path.join(imagesetFullPath, "*.png"))[0]
+				firstPNG = firstPNG.replace("\\", "/")
+				dd.InspectByReferenceFile(firstPNG)
+				dataProvider = pyglass.OpenPNGs(dd.GetFileList())
+				cd = pyglass.ConversionDriver()
+				cd.SetInput(dataProvider)
+				cd.SetOutput(project)
+				cd.StartAsynchronous()
+			except Exception as e:
+				self.addTextLine("Something went wrong...")
+				self.addTextLine(str(e))
+			else:
+				self.addTextLine("Success...!")
+			
 		
-		if os.path.isdir(fullpath):
-			l = glob.glob(os.path.join(fullpath, "*.png"))
-			if len(l) > 4:
-				dirs.append(fullpath)
-	
-	createDirIfMissing(outputFoldername)
-		
-	for imagesetFullPath in dirs:
-		basename =os.path.basename(imagesetFullPath)
-		addTextLine("Found directory: " + basename)
-		newPath = os.path.join(outputFoldername, basename)
-		addTextLine("Creating...")
-		try:
-			project = pyglass.CreateProject(pyglass.path(outputFoldername), basename)
-			dd = pyglass.DirectoryDescription()
-			firstPNG = glob.glob(os.path.join(imagesetFullPath, "*.png"))[0]
-			firstPNG = firstPNG.replace("\\", "/")
-			print(firstPNG)
-			dd.InspectByReferenceFile(firstPNG)
-			dataProvider = pyglass.OpenPNGs(dd.GetFileList(), False)
-			cd = pyglass.ConversionDriver()
-			cd.SetInput(dataProvider)
-			cd.SetOutput(project)
-			cd.StartAsynchronous()
-		except Exception as e:
-			print("An exception occurred")
-			print(e)
-		
-	
-	print(dirs)
+		print(dirs)
 
 def main():
 	root = tk.Tk()
@@ -112,6 +111,6 @@ def main():
 
 
 if __name__ == '__main__':
-	#main()
-	convert()
+	main()
+	
 
