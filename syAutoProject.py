@@ -7,6 +7,7 @@ import tkinter.scrolledtext as tkscrolled
 import syglass
 from syglass import pyglass
 import code
+import re
 
 class Application(tk.Frame):
 	outputFoldername = "Output Folder: "
@@ -75,13 +76,14 @@ class Application(tk.Frame):
 			return
 		dirs = []
 		all = os.listdir(inputFoldername)
+		#code.interact(local=locals())
 		successfulProjects = []
 		for each in all:
 			fullpath = os.path.join(inputFoldername, each)
 			
 			if os.path.isdir(fullpath):
 				l = glob.glob(os.path.join(fullpath, "*.png"))
-				if len(l) > 4:
+				if len(l) > 0:
 					dirs.append(fullpath)
 					
 		if not os.path.exists(outputFoldername):
@@ -136,6 +138,12 @@ class Application(tk.Frame):
 				self.addTextLine("Library Entry with that name found, renaming: " + name)
 			entry = pv.CreateEntryFromPath(project, name)
 			pv.PutEntry(entry)
+			m = re.search('_[0-9]+ug_', name)
+			stri = m.group()
+			weight = (float(stri[1:-3]) / 1000000.0)
+			proj = syglass.get_project(entry.path)
+			pyproj = proj.impl
+			pyproj.SetSampleWeight(weight)
 
 		self.addTextLine("------------------------------")
 		self.addTextLine("Successfully created " + str(len(successfulProjects)) + " / " + str(len(dirs)))
