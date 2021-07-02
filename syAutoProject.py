@@ -6,16 +6,30 @@ from tkinter import filedialog
 import tkinter.scrolledtext as tkscrolled
 import syglass
 from syglass import pyglass
-import code
-import re
+#import code
 
 class Application(tk.Frame):
-	outputFoldername = "Output Folder: "
-	inputFoldername = "Input Folder: "
-	screenMessages = []
+	prev_in, prev_out = " ", " "
+	config = {}
 	setInput = 1
 	setOutput = 1
-	
+	if(os.path.isfile('config.ini')):
+		with open('config.ini', 'r') as f:
+			lines = f.readlines()
+			print(lines)
+			config['out'] = lines[0][:-1]
+			config['in'] = lines[1]
+	if 'out' in config:
+		prev_out = config['out']
+		setOutput = 0
+	if 'in' in config:
+		prev_in = config['in']
+		setInput = 0
+	outputFoldername = prev_out
+	inputFoldername = prev_in
+	screenMessages = []
+	print(config)
+
 	def __init__(self, master=None):
 		super().__init__(master)
 		self.master = master
@@ -26,14 +40,14 @@ class Application(tk.Frame):
 
 	def create_widgets(self):
 		self.input = tk.Button(self)
-		self.input["text"] = self.inputFoldername
+		self.input["text"] = "Input Folder: " + self.inputFoldername
 		self.input["width"] = 400
 		self.input["command"] = self.inputBrowseFiles
 		self.input.pack(side="top") 
 		
 		self.output = tk.Button(self)
 		self.output["width"] = 400
-		self.output["text"] = self.outputFoldername
+		self.output["text"] = "Output Folder: " + self.outputFoldername
 		self.output["command"] = self.outputBrowseFiles
 		self.output.pack(side="top") 
 		
@@ -48,15 +62,15 @@ class Application(tk.Frame):
 		self.convert.pack(side="bottom")
 
 	def outputBrowseFiles(self): 
-		self.outputFoldername = filedialog.askdirectory(initialdir = "/", title = "Select a Folder") 
-		# Change label contents 
+		self.outputFoldername = filedialog.askdirectory(initialdir = self.inputFoldername, title = "Select a Folder") 
 		self.output["text"] = "Output Folder: " + self.outputFoldername
+		self.config['out'] = self.outputFoldername
 		self.setOutput = 0
 	
 	def inputBrowseFiles(self): 
-		self.inputFoldername = filedialog.askdirectory(initialdir = "/", title = "Select a Folder") 
-		# Change label contents 
+		self.inputFoldername = filedialog.askdirectory(initialdir = self.outputFoldername, title = "Select a Folder") 
 		self.input["text"] = "Input Folder: " + self.inputFoldername
+		self.config['in'] = self.inputFoldername
 		self.setInput = 0
 		
 	def addTextLine(self, text):
@@ -76,7 +90,6 @@ class Application(tk.Frame):
 			return
 		dirs = []
 		all = os.listdir(inputFoldername)
-		#code.interact(local=locals())
 		successfulProjects = []
 		for each in all:
 			fullpath = os.path.join(inputFoldername, each)
@@ -126,27 +139,14 @@ class Application(tk.Frame):
 		#afterward, use pyglass::VolumeLibrary to reload, Call VolumeLibrary::ReloadLibrary(), Call VolumeLibrary::PutEntry()
 		pv = pyglass.VolumeLibrary()
 		pv.ReloadLibrary()
-		
-		for project in successfulProjects:
-			print(project)
-			name = os.path.basename(project)
-			count = 0
-			while pv.HasEntry(name):
-				count = count + 1
-				name = name + "_" + str(count)
-			if count is not 0:
-				self.addTextLine("Library Entry with that name found, renaming: " + name)
-			entry = pv.CreateEntryFromPath(project, name)
-			pv.PutEntry(entry)
-			m = re.search('_[0-9]+ug_', name)
-			stri = m.group()
-			weight = (float(stri[1:-3]) / 1000000.0)
-			proj = syglass.get_project(entry.path)
-			pyproj = proj.impl
-			pyproj.SetSampleWeight(weight)
 
 		self.addTextLine("------------------------------")
 		self.addTextLine("Successfully created " + str(len(successfulProjects)) + " / " + str(len(dirs)))
+		lines = []
+		lines.append(self.config['out'] + "\n")
+		lines.append(self.config['in'])
+		with open('config.ini', 'w') as f:
+			f.writelines(lines)
 			
 def main():
 	root = tk.Tk()
